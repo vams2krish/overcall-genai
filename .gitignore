@@ -11,3 +11,5 @@ supabase/.temp/
 supabase/.branches/
 *.zip
 .openai/
+artifacts/
+.vercel/

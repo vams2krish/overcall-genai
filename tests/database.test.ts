@@ -24,6 +24,24 @@ test("migration, RLS, atomic token accounting and human confirmation", async (t)
     `insert into auth.users(id,email) values($1,'a@example.com'),($2,'b@example.com'),($3,'c@example.com'),($4,'d@example.com')`,
     [a, b, c, outsider],
   );
+  await db.exec(
+    readFileSync(
+      new URL(
+        "../supabase/migrations/20261104065130_live_broadcasting.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.exec(
+    readFileSync(
+      new URL(
+        "../supabase/migrations/20261104070301_production_hardening.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   const as = async (id: string) => {
     await db.exec("reset role");
     await db.query(`select set_config('request.jwt.claim.sub',$1,false)`, [id]);
@@ -301,6 +319,89 @@ test("migration, RLS, atomic token accounting and human confirmation", async (t)
       await assert.rejects(
         cmd("settle", { prop_id: p.id }),
         /Human confirmation/,
+      );
+    },
+  );
+  await t.test(
+    "broadcasts enforce membership, one host, sender identity and private inboxes",
+    async () => {
+      const hostClient = "10000000-0000-0000-0000-000000000001",
+        viewerClient = "10000000-0000-0000-0000-000000000002";
+      await as(outsider);
+      await assert.rejects(
+        db.query("select broadcast_control('start',$1,$2)", [gid, hostClient]),
+        /membership/,
+      );
+      await as(a);
+      const session = (
+        await db.query<{ s: { id: string } }>(
+          "select broadcast_control('start',$1,$2) as s",
+          [gid, hostClient],
+        )
+      ).rows[0].s;
+      await as(b);
+      await assert.rejects(
+        db.query("select broadcast_control('start',$1,$2)", [
+          gid,
+          viewerClient,
+        ]),
+        /already broadcasting/,
+      );
+      await db.query("select broadcast_signal($1,$2,$3,$4,$5::jsonb)", [
+        session.id,
+        viewerClient,
+        a,
+        hostClient,
+        JSON.stringify({ type: "ready" }),
+      ]);
+      await assert.rejects(
+        db.query("select broadcast_signal($1,$2,$3,$4,$5::jsonb)", [
+          session.id,
+          viewerClient,
+          c,
+          hostClient,
+          JSON.stringify({ type: "offer" }),
+        ]),
+        /only the broadcaster/,
+      );
+      assert.equal(
+        (await db.query("select * from broadcast_signals")).rows.length,
+        0,
+      );
+      await as(a);
+      assert.equal(
+        (await db.query("select * from broadcast_signals")).rows.length,
+        1,
+      );
+      await as(c);
+      assert.equal(
+        (await db.query("select * from broadcast_signals")).rows.length,
+        0,
+      );
+      await assert.rejects(
+        db.query("select broadcast_control('stop',$1,$2,$3)", [
+          gid,
+          viewerClient,
+          session.id,
+        ]),
+        /current broadcaster/,
+      );
+      await as(a);
+      await db.query("select broadcast_control('stop',$1,$2,$3)", [
+        gid,
+        hostClient,
+        session.id,
+      ]);
+      await as(b);
+      await assert.rejects(
+        db.query("select broadcast_signal($1,$2,$3,$4,$5::jsonb)", [
+          session.id,
+          viewerClient,
+          a,
+          hostClient,
+          JSON.stringify({ type: "ready" }),
+        ]),
+        /Inactive/,
       );
     },
   );

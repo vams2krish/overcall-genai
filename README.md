@@ -23,13 +23,14 @@ Charcoal surfaces, ivory text, warm orange actions, and muted violet for the opp
 - **Human settlement:** majority, initiator plus one, or admin confirmation policies; evidence proposals, accept/reject voting, deterministic proportional payouts, and full void refunds.
 - **Virtual economy:** 1,000 starting tokens, 50-token daily reward, immutable client-facing transaction ledger, integer arithmetic, atomic debits/refunds/payouts, and duplicate-entry/payment constraints.
 - **Supabase backend:** full schema, indexes, RLS on every application table, signup trigger, guarded RPCs, private evidence bucket, and realtime subscriptions.
-- **OpenRouter vision:** authenticated Edge Function, image/JSON validation, configurable multimodal model, per-prop throttling, null-on-uncertainty extraction schema, confidence-gated proposals, and local scoreboard capture with periodic frames. Human evidence is an alternative.
+- **OpenRouter vision:** authenticated Edge Function, image/JSON validation, configurable multimodal model, per-prop throttling, null-on-uncertainty extraction schema, confidence-gated proposals, and shared room scoreboard capture with periodic frames. Human evidence is an alternative.
+- **WebRTC broadcasting:** one host streams a selected scoreboard to up to nine viewers, using authenticated, recipient-only Supabase signaling. TURN credentials are issued server-side when a coturn relay is configured.
 - **Groups:** create private rooms, add existing accounts by ID, configurable confirmation and strict-mode settings in the group dialog and via RPC. Strict mode records missed participation rather than automatically expelling friends.
 - **Community:** public text feed posting and private follow database primitives.
 - **Expo native client:** email OTP, private room selection, prop cards, creation, joining, evidence proposals, votes, settlement, daily reward, secure session storage, and realtime refresh. Native vision and full feature parity remain future work.
 - **Demo mode:** a clearly labeled local experience without credentials. Demo uses simulated admin confirmation; connected groups default to participant majority.
 
-Sports labels include Cricket, NBA, NFL, Soccer, MLB, and NHL. Cricket has the most complete experience. Match scores in this release are sample data; there is no live sports data provider or bookmaker odds integration. No Odds API is used.
+Live scoreboards cover Cricket, NBA, NFL, MLB, NHL, and Premier League soccer. Cricket uses ESPNcricinfo live-scores RSS by default, with an optional richer CricketData.org adapter. Other sports use ESPN public scoreboards. Source timestamps and stale states are visible. No Odds API is used; pool shares are calculated in-house.
 
 ## Stack
 
@@ -71,7 +72,7 @@ supabase db push --dry-run
 supabase db push
 ```
 
-The SQL was executed in automated PGlite tests using stubs for Supabase-owned Auth/Storage schemas. No cloud database was provisioned or migrated as part of this commit.
+The migrations are deployed to a dedicated live Overcall Supabase project. Automated PGlite tests cover the same schema, and a live Postgres rollback-only smoke check verified quorum, payouts, RLS, and private signaling. See [live setup and verification boundaries](docs/LIVE_SETUP.md).
 
 ## Configure OpenRouter vision
 
@@ -130,7 +131,7 @@ docs/                     Architecture, API reference, product screenshot
 
 This is a working, tested **MVP foundation**, not an audited production betting service. The web demo runs without external services; connected behavior requires Supabase configuration and vision additionally requires OpenRouter credentials. PGlite validates SQL behavior but does not replace real Supabase service, multi-session race, or device tests.
 
-Still to implement: licensed live sports ingestion, complete standard markets, WebRTC peer broadcasting/signaling/TURN, native vision capture, automatic event locks, weekly/activity bonuses, opt-in global standings, full follow/profile UX, presence-based participation tracking, and operational abuse/cost controls.
+Still to implement or configure: commercial sports-provider SLAs/licensing, complete standard markets, a deployed TURN relay for restrictive networks, native vision capture, automatic event locks, weekly/activity bonuses, opt-in global standings, full follow/profile UX, presence-based participation tracking, and operational abuse/cost controls. Basic live sports feeds and browser WebRTC broadcasting are implemented. OpenRouter still requires an approved key and usable provider quota.
 
 See [architecture and trust boundaries](docs/ARCHITECTURE.md) and [RPC/vision API reference](docs/API.md) for detailed rules and limitations.
 

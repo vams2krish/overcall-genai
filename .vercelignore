@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/.expo
+**/.env*
+**/dist
+artifacts
+apps/mobile
+docs
+tests
+supabase
+.github
+.git

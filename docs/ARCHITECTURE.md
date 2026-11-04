@@ -55,7 +55,7 @@ Unanimous agreement is not necessary. Majority means all participants, including
 
 The browser requests a user-selected display via `getDisplayMedia`, previews it locally, and sends a downscaled JPEG frame every 20 seconds while the result dialog is open. The database rate gate allows at most one analysis per prop per 15 seconds. The browser stops tracks on close, on the display ending, on errors, and when the prop leaves awaiting-result state.
 
-This implementation does **not** broadcast the stream to other users over WebRTC. `getDisplayMedia` is the capture side; a signaling channel, `RTCPeerConnection`, TURN credentials, and receiver flow are separate future work. Native scoreboard capture is also deferred. Frames go directly to the authenticated Edge Function; the evidence bucket is private and has no client upload policies. No screenshot bytes are persisted by the app. Provider retention depends on the chosen OpenRouter provider/account settings.
+The browser now broadcasts the selected scoreboard to group members over RTCPeerConnection. Signaling rows bind sender identity to Supabase Auth and are visible only to the intended recipient. A 90-second host lease prevents abandoned sessions blocking the room. Server-issued coturn credentials are supported; a relay host must still be configured for restrictive networks. Native scoreboard capture is also deferred. Frames go directly to the authenticated Edge Function; the evidence bucket is private and has no client upload policies. No screenshot bytes are persisted by the app. Provider retention depends on the chosen OpenRouter provider/account settings.
 
 Vision returns player, over, sixes, wickets, runs, confidence, proposed side, evidence explanation, and a sufficient-evidence flag. Missing facts must be null. A cumulative score alone is not sufficient proof of events in one specific over. Screenshots and propositions are treated as untrusted data in the prompt. Runtime schema validation rejects malformed outputs. Each provider attempt is recorded before inference; validated extractions and sanitized failure states update that audit row. Interrupted requests can remain pending for operational review.
 
@@ -65,11 +65,11 @@ Postgres Changes subscriptions refresh UI after changes. Published tables are pr
 
 ## What remains before a production launch
 
-- Provision and test a real Supabase instance and OpenRouter model; run Supabase security/performance advisors.
+- Supabase is deployed and live rollback-only checks and advisors pass. Finish OpenRouter key/credit configuration and a live inference check.
 - Test database concurrency against an actual multi-connection Postgres server, not just PGlite.
 - Add production email delivery, abuse controls, observability, global/per-user inference budgets, pagination, pending-attempt recovery, and deployment integration tests.
-- Add a licensed sports-score provider or authorized in-house ingestion, event-driven locks, and complete standard markets. The UI score is explicitly sample data. Pool shares are not bookmaker odds or guaranteed probabilities.
-- Add WebRTC signaling/TURN, mobile screen capture, Expo device QA and release signing.
+- Basic live ESPN/ESPNcricinfo scoreboards are connected. Obtain commercial provider terms/SLA as needed, add event-driven locks and complete standard markets. Pool shares are not bookmaker odds or guaranteed probabilities.
+- Deploy a TURN relay, test separate physical networks, and add mobile screen capture, Expo device QA and release signing.
 - Add opt-in global rankings, weekly/activity reward policies, richer social profiles/follow UX, group join links, moderation, and strict-mode enforcement beyond flags.
 
 The repository is a tested MVP foundation, not a claim that these integrations are already live.

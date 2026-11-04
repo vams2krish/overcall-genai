@@ -1,4 +1,113 @@
 @import "tailwindcss";
+.actual-scoreboard {
+  min-height: 210px;
+}
+.match-picker {
+  display: block;
+  margin-top: 17px;
+  position: relative;
+  z-index: 2;
+}
+.match-picker select {
+  background: #211c26;
+  border: 1px solid #594151;
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 100%;
+  color: #d4bdd8;
+  font-size: 11px;
+}
+.feed-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.feed-team.away {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.feed-team strong {
+  font-size: 13px;
+  font-weight: 500;
+  display: block;
+}
+.actual-score {
+  display: block;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  margin-top: 7px;
+}
+.actual-scoreboard .match-score {
+  margin: 22px 0 14px;
+}
+.match-status {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  color: #d0afc1;
+  margin: 12px 0 20px;
+}
+.feed-empty {
+  padding: 35px 0;
+}
+.feed-empty strong {
+  font-size: 18px;
+}
+.feed-empty p,
+.feed-warning {
+  color: #c5a29e;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 12px;
+}
+.match-bottom a {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.feed-warning {
+  padding-bottom: 12px;
+}
+.broadcast-panel {
+  margin-top: 20px;
+}
+.broadcast-video {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  border-radius: 6px;
+  background: #090809;
+  margin-bottom: 14px;
+}
+.relay-note {
+  color: #9c86a7;
+  font-size: 9px;
+  line-height: 1.8;
+  margin-top: 12px;
+}
+.relay-note svg {
+  display: inline;
+  margin-right: 4px;
+}
+@media (max-width: 700px) {
+  .feed-team strong {
+    font-size: 10px;
+  }
+  .actual-score {
+    font-size: 23px;
+  }
+  .feed-team {
+    gap: 8px;
+  }
+  .broadcast-panel {
+    margin-top: 0;
+  }
+  .match-picker select {
+    font-size: 10px;
+  }
+}
 @theme inline {
   --color-background: #111112;
   --color-foreground: #f1efea;

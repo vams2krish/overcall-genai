@@ -48,6 +48,8 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { demoCommand, seed, type DemoState } from "@/lib/demo";
+import { SportsScoreboard } from "@/components/sports-scoreboard";
+import { BroadcastPanel } from "@/components/broadcast-panel";
 type Section =
   "Match room" | "My groups" | "Explore" | "Leaderboard" | "Wallet";
 const names: Record<string, string> = {
@@ -59,7 +61,8 @@ const names: Record<string, string> = {
 export function Overcall() {
   const [state, setState] = useState<DemoState>(seed);
   const [section, setSection] = useState<Section>("Match room");
-  const [sport, setSport] = useState("Cricket");
+  const [sport, setSport] = useState<Prop["sport"]>("Cricket");
+  const [roomStream, setRoomStream] = useState<MediaStream | null>(null);
   const [tab, setTab] = useState("All props");
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<
@@ -189,14 +192,21 @@ export function Overcall() {
   useEffect(() => {
     if (!isLive) return;
     void refresh();
-    const channel = supabase!
-      .channel(`room-${groupId}`)
-      .on(
+    const channel = supabase!.channel(`room-${groupId}`);
+    for (const table of [
+      "custom_props",
+      "custom_prop_entries",
+      "custom_prop_votes",
+      "chat_messages",
+      "token_transactions",
+      "feed_posts",
+    ])
+      channel.on(
         "postgres_changes",
-        { event: "*", schema: "public" },
+        { event: "*", schema: "public", table },
         () => void refresh(),
-      )
-      .subscribe();
+      );
+    channel.subscribe();
     return () => {
       void supabase!.removeChannel(channel);
     };
@@ -440,72 +450,7 @@ export function Overcall() {
               </div>
               <div className="room-layout">
                 <section className="room-main">
-                  <div className="match-banner">
-                    <div className="match-top">
-                      <span className="live-label">
-                        <Radio size={12} /> SAMPLE MATCH
-                      </span>
-                      <span>
-                        {sport === "Cricket"
-                          ? "T20 INTERNATIONAL"
-                          : "FRIENDLY PREDICTIONS"}{" "}
-                        <span className="dim">/</span> YOUR WATCH PARTY
-                      </span>
-                      <span className="match-format">
-                        {isLive ? "Private" : "Demo data"}
-                      </span>
-                    </div>
-                    <div className="match-score">
-                      <div className="team">
-                        <span className="team-badge india">IN</span>
-                        <div>
-                          <strong>
-                            {sport === "Cricket" ? "India" : "Home"}
-                          </strong>
-                          <small>
-                            {sport === "Cricket"
-                              ? "Batting · 14.2 overs"
-                              : "Your side"}
-                          </small>
-                        </div>
-                      </div>
-                      <div className="score">
-                        <strong>
-                          {sport === "Cricket" ? "142" : "—"}
-                          <span>{sport === "Cricket" ? "/ 3" : ""}</span>
-                        </strong>
-                        <small>
-                          {sport === "Cricket"
-                            ? "RUN RATE 9.91"
-                            : "AWAITING MATCH DATA"}
-                        </small>
-                      </div>
-                      <div className="team away">
-                        <div>
-                          <strong>
-                            {sport === "Cricket" ? "Australia" : "Away"}
-                          </strong>
-                          <small>
-                            {sport === "Cricket" ? "Yet to bat" : "Their side"}
-                          </small>
-                        </div>
-                        <span className="team-badge australia">
-                          {sport === "Cricket" ? "AU" : "AW"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="match-bottom">
-                      <span>
-                        <Users size={14} />
-                        {isLive ? members.length : 6} in the room
-                      </span>
-                      <span>
-                        Every moment is a new call <ArrowUpRight size={13} />
-                      </span>
-                    </div>
-                    <div className="orb orb-one" />
-                    <div className="orb orb-two" />
-                  </div>
+                  <SportsScoreboard sport={sport} />
                   <div className="room-title">
                     <div>
                       <span className="group-icon">P</span>
@@ -814,6 +759,12 @@ export function Overcall() {
                       View leaderboard <ArrowRight size={14} />
                     </button>
                   </div>
+                  <BroadcastPanel
+                    key={groupId}
+                    groupId={groupId}
+                    userId={isLive ? user : null}
+                    onStream={setRoomStream}
+                  />
                   <div className="panel chat-panel">
                     <div className="panel-heading">
                       <h3>
@@ -1054,7 +1005,8 @@ export function Overcall() {
               <p className="muted">
                 Demo uses an admin confirmation simulation. Connected groups
                 default to participant majority. Screenshare captures selected
-                frames locally; remote WebRTC relay is not included yet.
+                frames locally. Room broadcasting uses WebRTC; restrictive
+                networks need a configured TURN relay.
               </p>
               <Button
                 variant="outline"
@@ -1078,7 +1030,9 @@ export function Overcall() {
         <DialogContent>
           {active && (
             <ResultFlow
+              key={active.id}
               prop={active}
+              sharedStream={roomStream}
               entries={state.entries.filter((e) => e.prop_id === active.id)}
               proposal={state.proposals
                 .filter((q) => q.prop_id === active.id)
@@ -1500,6 +1454,7 @@ function GroupForm({
   );
 }
 function ResultFlow({
+  sharedStream,
   prop,
   entries,
   proposal,
@@ -1509,6 +1464,7 @@ function ResultFlow({
   onMessage,
   refresh,
 }: {
+  sharedStream: MediaStream | null;
   prop: Prop;
   entries: Entry[];
   proposal?: Proposal;
@@ -1553,7 +1509,16 @@ function ResultFlow({
       const { data, error } = await supabase!.functions.invoke("vision", {
         body: { prop_id: prop.id, image: dataUrl, source },
       });
-      if (error) throw error;
+      if (error) {
+        const context = (error as { context?: Response }).context;
+        if (context instanceof Response) {
+          const info = await context.json().catch(() => null);
+          throw Error(
+            typeof info?.error === "string" ? info.error : error.message,
+          );
+        }
+        throw error;
+      }
       if (data.error) throw Error(data.error);
       onMessage(
         data.result.sufficient_evidence
@@ -1577,10 +1542,12 @@ function ResultFlow({
       return;
     }
     try {
-      stream.current = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 1 },
-        audio: false,
-      });
+      stream.current = sharedStream
+        ? sharedStream.clone()
+        : await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: 1 },
+            audio: false,
+          });
       if (!(await run("vision_start"))) {
         stop();
         return;
@@ -1718,7 +1685,11 @@ function ResultFlow({
                   } else void screenshare();
                 }}
               >
-                {sharing ? "Stop sharing" : "Share scoreboard"}
+                {sharing
+                  ? "Stop analysis"
+                  : sharedStream
+                    ? "Analyze room scoreboard"
+                    : "Share scoreboard"}
               </Button>
               <label className="upload-button">
                 {visionBusy ? "Reading…" : "Upload a frame"}
