@@ -22,7 +22,9 @@ For a different deployment, apply the migrations to the chosen project and confi
 
 ## OpenRouter
 
-The approved key configuration is a $1 total usage cap with no expiration. Browser control failed before creation could be completed, so no key has been created or deployed yet.
+A user-supplied OpenRouter key is saved only in the ignored local web environment file. Authentication succeeded and the configured model correctly read a generated scoreboard image as 123 / 4. Provider metadata reported no spending cap and an expiration of December 4, 2026; this differs from the requested $1 total cap and no expiration. Rotate the chat-exposed key and correct those settings in OpenRouter.
+
+Deployment of Function Secrets is still pending: the Supabase CLI has no authenticated access token and browser control cannot initialize. The local key is not available to the deployed Edge Function.
 
 The Edge Function needs `OPENROUTER_API_KEY` and `OPENROUTER_VISION_MODEL` in Supabase Function Secrets. Key creation and availability of credits are separate from deploying the function. A deployed function with missing provider secrets returns an explicit 503; it never invents a model response.
 
