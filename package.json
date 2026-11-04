@@ -1,0 +1,21 @@
+{
+  "name": "overcall",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/core"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @overcall/web",
+    "build": "npm run build -w @overcall/web",
+    "typecheck": "npm run typecheck -w @overcall/web",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "@types/node": "26.6.6"
+  }
+}

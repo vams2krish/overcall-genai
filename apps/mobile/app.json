@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Overcall",
+    "slug": "overcall",
+    "scheme": "overcall",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.overcall.mobile"
+    },
+    "android": { "package": "app.overcall.mobile" },
+    "plugins": ["expo-secure-store"]
+  }
+}
