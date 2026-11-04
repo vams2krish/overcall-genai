@@ -2,6 +2,10 @@
 
 ### Make the call. Own the moment.
 
+[Hosted app](https://overcall-genai.vercel.app) · [Live setup and verification](docs/LIVE_SETUP.md)
+
+The current hosted deployment retains Vercel Authentication.
+
 ![Overcall project cover](apps/web/public/project-cover.svg)
 
 **Overcall** is a social sports prediction app for small groups of friends. Create spontaneous Yes/No props, stake virtual tokens, talk in the match room, and compete for bragging rights. OpenRouter vision can read a shared scoreboard and suggest a result. **A human confirmation rule always comes before settlement.**
@@ -27,7 +31,7 @@ Charcoal surfaces, ivory text, warm orange actions, and muted violet for the opp
 - **WebRTC broadcasting:** one host streams a selected scoreboard to up to nine viewers, using authenticated, recipient-only Supabase signaling. TURN credentials are issued server-side when a coturn relay is configured.
 - **Groups:** create private rooms, add existing accounts by ID, configurable confirmation and strict-mode settings in the group dialog and via RPC. Strict mode records missed participation rather than automatically expelling friends.
 - **Community:** public text feed posting and private follow database primitives.
-- **Expo native client:** email OTP, private room selection, prop cards, creation, joining, evidence proposals, votes, settlement, daily reward, secure session storage, and realtime refresh. Native vision and full feature parity remain future work.
+- **Expo native client:** email magic links with PKCE and optional OTP, private room selection, prop cards, creation, joining, evidence proposals, votes, settlement, daily reward, secure session storage, and realtime refresh. Native vision and full feature parity remain future work.
 - **Demo mode:** a clearly labeled local experience without credentials. Demo uses simulated admin confirmation; connected groups default to participant majority.
 
 Live scoreboards cover Cricket, NBA, NFL, MLB, NHL, and Premier League soccer. Cricket uses ESPNcricinfo live-scores RSS by default, with an optional richer CricketData.org adapter. Other sports use ESPN public scoreboards. Source timestamps and stale states are visible. No Odds API is used; pool shares are calculated in-house.
@@ -100,7 +104,7 @@ npm ci
 npm start
 ```
 
-Configure the Supabase email template to include the OTP token for native code verification. The native client shares `packages/core` source with web. Native build signing, simulator/device QA, screen capture, and store submission are not part of this initial release.
+Native sign-in uses `overcall://auth/callback` with PKCE and secure verifier storage. Use a development or standalone native build so the custom scheme is registered. The default Supabase email link works without editing templates; optional OTP entry needs a template that includes the code. The native client shares `packages/core` source with web. Native build signing, simulator/device QA, screen capture, and store submission are not part of this initial release.
 
 ## Verify
 

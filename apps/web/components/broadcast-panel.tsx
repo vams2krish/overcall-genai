@@ -229,9 +229,8 @@ export function BroadcastPanel({
       </div>
       {mode !== "idle" && !relay && (
         <p className="relay-note">
-          Direct connection mode. A TURN relay is required on some networks;
-          configure TURN_URLS and TURN_SHARED_SECRET for reliable cross-network
-          access.
+          Direct connection mode. Sharing may be unavailable on networks that
+          block direct connections.
         </p>
       )}
       <p className="relay-note">

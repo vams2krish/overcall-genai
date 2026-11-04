@@ -2,11 +2,18 @@
 
 Overcall uses its own Supabase project, `tcnrzqtiwgffrzgqfhgl`, in West US. This is a dedicated backend for the app.
 
+## Hosted application
+
+Production deployment: [overcall-genai.vercel.app](https://overcall-genai.vercel.app). Vercel Authentication remains enabled; this is an owner-protected deployment, not an anonymous public release. The app also has its own Supabase sign-in. Vercel CLI deployment is available from the authorized account; Git auto-deployment is not linked.
+
 ## Supabase
 
 - Core schema, broadcasting, and production-hardening migrations are deployed.
 - RLS is enabled on all 16 application tables. Privileged user commands live in a private schema behind caller-privilege public wrappers.
 - The vision Edge Function is deployed and verifies Supabase bearer tokens itself.
+- Auth Site URL is the production HTTPS origin. Allowed redirects are that exact origin, localhost:3000, 127.0.0.1:3000, with the native `overcall://auth/callback` prepared but pending final dashboard verification.
+- The built-in email sender/default templates are in use. Configure a production SMTP provider before opening sign-ups to a friend group; sender restrictions and quotas still apply.
+- Native sign-in supports the default email magic link using PKCE. OTP entry remains available for a future custom template. Native device testing is still required.
 - Web and Expo public connection fields are stored in ignored local environment files. No server/provider credentials belong in a `NEXT_PUBLIC_` or `EXPO_PUBLIC_` variable.
 - Live Postgres smoke checks validated membership isolation, human quorum, atomic payouts, and private signaling. Synthetic test data was rolled back.
 - Supabase security advisors reported no findings after the hardening migration. Unused-index informational notices are expected on a new database.
@@ -14,6 +21,8 @@ Overcall uses its own Supabase project, `tcnrzqtiwgffrzgqfhgl`, in West US. This
 For a different deployment, apply the migrations to the chosen project and configure its public URL/key. Email Auth must allow the exact web origin; add the deployed HTTPS origin to URL Configuration before sending sign-in links. Do not use wildcard redirect URLs.
 
 ## OpenRouter
+
+The approved key configuration is a $1 total usage cap with no expiration. Browser control failed before creation could be completed, so no key has been created or deployed yet.
 
 The Edge Function needs `OPENROUTER_API_KEY` and `OPENROUTER_VISION_MODEL` in Supabase Function Secrets. Key creation and availability of credits are separate from deploying the function. A deployed function with missing provider secrets returns an explicit 503; it never invents a model response.
 

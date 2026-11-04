@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   AppState,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -14,6 +15,9 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as SecureStore from "expo-secure-store";
 import { createClient } from "@supabase/supabase-js";
+import { polyfillWebCrypto } from "expo-standard-web-crypto";
+import { nativeCallbackParams, nativeRedirectUrl } from "./lib/auth-callback";
+polyfillWebCrypto();
 import {
   createPropSchema,
   type Prop,
@@ -34,6 +38,7 @@ const db =
           autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: false,
+          flowType: "pkce",
         },
       })
     : null;
@@ -108,6 +113,35 @@ export default function App() {
   }, [group, user, selected?.id]);
   useEffect(() => {
     if (!db) return;
+    let lastCode = "";
+    const handleLink = async (input: string | null | undefined) => {
+      if (!input) return;
+      const callback = nativeCallbackParams(input);
+      if (!callback) return;
+      if (callback.error) {
+        Alert.alert("Sign-in failed", callback.error);
+        return;
+      }
+      if (!callback.code || callback.code === lastCode) return;
+      lastCode = callback.code;
+      const { error } = await db.auth.exchangeCodeForSession(
+        callback.code,
+        callback.flowId ? { flowId: callback.flowId } : undefined,
+      );
+      if (error) Alert.alert("Sign-in failed", error.message);
+    };
+    const links = Linking.addEventListener(
+      "url",
+      ({ url }) => void handleLink(url),
+    );
+    void Linking.getInitialURL()
+      .then(handleLink)
+      .catch(() =>
+        Alert.alert(
+          "Sign-in failed",
+          "Could not open the sign-in link. Please request a new one.",
+        ),
+      );
     void db.auth
       .getSession()
       .then(({ data }) => setUser(data.session?.user.id ?? null));
@@ -121,6 +155,7 @@ export default function App() {
     return () => {
       data.subscription.unsubscribe();
       sub.remove();
+      links.remove();
     };
   }, []);
   useEffect(() => {
@@ -185,8 +220,8 @@ export default function App() {
         <Text style={styles.brand}>overcall</Text>
         <Text style={styles.heading}>Make the call.</Text>
         <Text style={styles.muted}>
-          Sign in with an email code. Configure the Supabase email template to
-          include the OTP token.
+          Get a secure sign-in link by email. Open it on this device to return
+          to Overcall.
         </Text>
         <TextInput
           accessibilityLabel="Email"
@@ -200,6 +235,10 @@ export default function App() {
         />
         {sent ? (
           <>
+            <Text style={styles.muted}>
+              Check your email and tap the sign-in link. If your email also
+              includes a code, you can enter it below.
+            </Text>
             <TextInput
               accessibilityLabel="Email verification code"
               style={styles.input}
@@ -223,9 +262,12 @@ export default function App() {
           </>
         ) : (
           <Action
-            title="Send sign-in code"
+            title="Send sign-in link"
             onPress={async () => {
-              const { error } = await db.auth.signInWithOtp({ email });
+              const { error } = await db.auth.signInWithOtp({
+                email,
+                options: { emailRedirectTo: nativeRedirectUrl },
+              });
               if (error) Alert.alert("Sign-in failed", error.message);
               else setSent(true);
             }}
