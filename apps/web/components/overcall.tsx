@@ -51,7 +51,11 @@ import { demoCommand, seed, type DemoState } from "@/lib/demo";
 import { SportsScoreboard } from "@/components/sports-scoreboard";
 import { BroadcastPanel } from "@/components/broadcast-panel";
 type Section =
-  "Match room" | "My groups" | "Explore" | "Leaderboard" | "Wallet";
+  | "Match room"
+  | "My groups"
+  | "Explore"
+  | "Leaderboard"
+  | "Wallet";
 const names: Record<string, string> = {
   you: "You",
   arjun: "Arjun",
@@ -145,7 +149,7 @@ export function Overcall() {
         .from("chat_messages")
         .select("*")
         .eq("group_id", gid ?? "00000000-0000-0000-0000-000000000000")
-        .order("created_at")
+        .order("created_at", { ascending: false })
         .limit(100),
       supabase
         .from("feed_posts")
@@ -180,7 +184,7 @@ export function Overcall() {
       proposals: (proposals.data as Proposal[]) ?? [],
       balance: profile.data?.find((p) => p.id === user)?.balance ?? 0,
       ledger: (ledger.data as Transaction[]) ?? [],
-      chat: (chats.data ?? []).map((c) => ({
+      chat: [...(chats.data ?? [])].reverse().map((c) => ({
         id: c.id,
         name:
           profile.data?.find((p) => p.id === c.user_id)?.display_name ??
@@ -221,7 +225,7 @@ export function Overcall() {
         });
         if (error) throw error;
         await refresh();
-      } else setState((s) => demoCommand(s, action, payload));
+      } else setState(demoCommand(state, action, payload));
       toast(
         action === "join"
           ? "You’re in. Make it count."

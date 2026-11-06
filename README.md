@@ -139,6 +139,8 @@ Still to implement or configure: commercial sports-provider SLAs/licensing, comp
 
 See [architecture and trust boundaries](docs/ARCHITECTURE.md) and [RPC/vision API reference](docs/API.md) for detailed rules and limitations.
 
+See the [feature-by-feature product test report](docs/PRODUCT_TEST_REPORT.md) for all six sports, 49 automated checks, production endpoint results, fixes, and the browser/device flows that remain unverified.
+
 ## References
 
 - [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security)

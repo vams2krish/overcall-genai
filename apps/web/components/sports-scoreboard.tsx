@@ -113,9 +113,7 @@ export function SportsScoreboard({ sport }: { sport: Sport }) {
           <strong>
             {loading
               ? "Loading match scores…"
-              : sport === "Cricket"
-                ? "Connect your cricket feed"
-                : "No matches returned"}
+              : "No matches returned"}
           </strong>
           <p>{error || feed?.error || "Checking the provider’s scoreboard."}</p>
         </div>

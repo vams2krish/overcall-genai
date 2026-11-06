@@ -1,5 +1,6 @@
 import {
   payouts,
+  createPropSchema,
   transition,
   type Prop,
   type Entry,
@@ -137,6 +138,7 @@ export function demoCommand(
     return s;
   }
   if (action === "create") {
+    payload = createPropSchema.parse(payload);
     const n = Number(payload.stake);
     if (n > s.balance) throw Error("Insufficient tokens");
     const pid = crypto.randomUUID();

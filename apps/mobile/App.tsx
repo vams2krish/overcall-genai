@@ -20,6 +20,8 @@ import { nativeCallbackParams, nativeRedirectUrl } from "./lib/auth-callback";
 polyfillWebCrypto();
 import {
   createPropSchema,
+  sports,
+  type Sport,
   type Prop,
   type Side,
 } from "../../packages/core/src/index";
@@ -76,6 +78,7 @@ export default function App() {
     [title, setTitle] = useState(""),
     [stake, setStake] = useState("20"),
     [side, setSide] = useState<Side>("yes"),
+    [sport, setSport] = useState<Sport>("Cricket"),
     [selected, setSelected] = useState<Prop | null>(null),
     [evidence, setEvidence] = useState(""),
     [proposal, setProposal] = useState<{ side: Side; evidence: string } | null>(
@@ -389,11 +392,22 @@ export default function App() {
         <ScrollView contentContainerStyle={styles.modal}>
           <Text style={styles.heading}>What’s your call?</Text>
           <Text style={styles.muted}>
-            Cricket · fixed entry · 5 minute timer
+            {sport} · fixed entry · 5 minute timer
           </Text>
+          <Text style={styles.eyebrow}>SPORT</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {sports.map((item) => (
+              <Action
+                key={item}
+                title={item}
+                secondary={sport !== item}
+                onPress={() => setSport(item)}
+              />
+            ))}
+          </ScrollView>
           <TextInput
             accessibilityLabel="Prediction"
-            placeholder="Two sixes in over 16?"
+            placeholder="Describe a clear outcome and its time window"
             placeholderTextColor="#89778f"
             value={title}
             onChangeText={setTitle}
@@ -424,7 +438,7 @@ export default function App() {
             onPress={async () => {
               const p = createPropSchema.safeParse({
                 title,
-                sport: "Cricket",
+                sport,
                 stake: Number(stake),
                 side,
                 entry_type: "fixed",

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
+import { sports } from "../packages/core/src/index";
 const a = "00000000-0000-0000-0000-000000000001",
   b = "00000000-0000-0000-0000-000000000002",
   c = "00000000-0000-0000-0000-000000000003",
@@ -403,6 +404,239 @@ test("migration, RLS, atomic token accounting and human confirmation", async (t)
         ]),
         /Inactive/,
       );
+    },
+  );
+  for (const sport of sports) {
+    for (const entryType of ["fixed", "match", "free"] as const) {
+      await t.test(
+        `${sport}: ${entryType} entry through confirmed settlement and exact refunds`,
+        async () => {
+          await as(a);
+          const balanceBefore = (
+            await db.query<{ balance: number }>(
+              "select balance from profiles where id=$1",
+              [a],
+            )
+          ).rows[0].balance;
+          const payload = {
+            group_id: gid,
+            title: `${sport}: home team wins the completed match?`,
+            sport,
+            side: "yes",
+            stake: 7,
+            entry_type: entryType,
+            entry_amount: 7,
+            minutes: 5,
+            lock_type: "manual",
+          };
+          const p = await cmd("create", payload);
+          assert.equal(p.sport, sport);
+          await as(b);
+          if (entryType !== "free")
+            await assert.rejects(
+              cmd("join", { prop_id: p.id, side: "no", stake: 8 }),
+              /entry rule/,
+            );
+          await cmd("join", {
+            prop_id: p.id,
+            side: "no",
+            stake: entryType === "free" ? 11 : 7,
+          });
+          await as(a);
+          await cmd("lock", { prop_id: p.id });
+          await cmd("await", { prop_id: p.id });
+          await cmd("propose", {
+            prop_id: p.id,
+            side: "yes",
+            evidence: `Synthetic ${sport} final-score evidence for this test only.`,
+          });
+          await assert.rejects(
+            cmd("settle", { prop_id: p.id }),
+            /Human confirmation/,
+          );
+          await cmd("vote", { prop_id: p.id, approve: true });
+          await as(b);
+          await cmd("vote", { prop_id: p.id, approve: true });
+          const settled = await cmd("settle", { prop_id: p.id });
+          assert.equal(settled.status, "settled");
+          await assert.rejects(
+            cmd("settle", { prop_id: p.id }),
+            /Human confirmation/,
+          );
+          await as(a);
+          const after = (
+            await db.query<{ balance: number }>(
+              "select balance from profiles where id=$1",
+              [a],
+            )
+          ).rows[0].balance;
+          assert.equal(after - balanceBefore, entryType === "free" ? 11 : 7);
+          const refunded = await cmd("create", payload);
+          await cmd("void", {
+            prop_id: refunded.id,
+            reason: "Synthetic abandoned match",
+          });
+          assert.equal(
+            (
+              await db.query<{ balance: number }>(
+                "select balance from profiles where id=$1",
+                [a],
+              )
+            ).rows[0].balance,
+            after,
+          );
+          await db.exec("reset role");
+          assert.equal(
+            (
+              await db.query<{ net: number }>(
+                "select sum(amount)::int as net from token_transactions where prop_id=$1",
+                [p.id],
+              )
+            ).rows[0].net,
+            0,
+          );
+        },
+      );
+    }
+  }
+  await t.test(
+    "chat, social feed, follows and wallet enforce caller identity and room isolation",
+    async () => {
+      await as(a);
+      await db.query(
+        "insert into chat_messages(group_id,user_id,body) values($1,$2,'Private test message')",
+        [gid, a],
+      );
+      await assert.rejects(
+        db.query(
+          "insert into chat_messages(group_id,user_id,body) values($1,$2,'Impersonation')",
+          [gid, b],
+        ),
+        /row-level security/,
+      );
+      await db.query(
+        "insert into feed_posts(user_id,body) values($1,'Synthetic public feed post')",
+        [a],
+      );
+      await assert.rejects(
+        db.query(
+          "insert into feed_posts(user_id,body) values($1,'Impersonation')",
+          [b],
+        ),
+        /row-level security/,
+      );
+      await db.query(
+        "insert into follows(follower_id,following_id) values($1,$2)",
+        [a, b],
+      );
+      await as(outsider);
+      assert.equal(
+        (await db.query("select * from chat_messages")).rows.length,
+        0,
+      );
+      assert.equal((await db.query("select * from follows")).rows.length, 0);
+      assert.equal(
+        (
+          await db.query(
+            "select * from token_transactions where user_id<>auth.uid()",
+          )
+        ).rows.length,
+        0,
+      );
+      await assert.rejects(
+        db.query(
+          "insert into chat_messages(group_id,user_id,body) values($1,$2,'Outsider')",
+          [gid, outsider],
+        ),
+        /row-level security/,
+      );
+      await as(a);
+      await db.query(
+        "delete from follows where follower_id=$1 and following_id=$2",
+        [a, b],
+      );
+      assert.equal((await db.query("select * from follows")).rows.length, 0);
+    },
+  );
+  await t.test(
+    "group settings enforce admin rights, snapshot confirmation rules and track missed calls",
+    async () => {
+      const settings = {
+        strict_mode: true,
+        confirmation_rule: "initiator_plus_one",
+        who_can_create_props: "admin",
+        ai_confidence_threshold: 0.95,
+      };
+      await as(b);
+      await assert.rejects(
+        db.query("select manage_group($1,'settings',$2::jsonb)", [
+          gid,
+          JSON.stringify(settings),
+        ]),
+        /admin/,
+      );
+      await as(a);
+      await db.query("select manage_group($1,'settings',$2::jsonb)", [
+        gid,
+        JSON.stringify(settings),
+      ]);
+      await as(b);
+      await assert.rejects(create(), /admin/i);
+      await as(a);
+      const p = await create();
+      await as(b);
+      await cmd("join", { prop_id: p.id, side: "no", stake: 20 });
+      await as(a);
+      await cmd("lock", { prop_id: p.id });
+      assert.ok(
+        (
+          await db.query<{ missed_props: number }>(
+            "select missed_props from group_members where group_id=$1 and user_id=$2",
+            [gid, c],
+          )
+        ).rows[0].missed_props > 0,
+      );
+      await db.query("select manage_group($1,'settings',$2::jsonb)", [
+        gid,
+        JSON.stringify({ ...settings, confirmation_rule: "admin" }),
+      ]);
+      await cmd("await", { prop_id: p.id });
+      await cmd("propose", {
+        prop_id: p.id,
+        side: "yes",
+        evidence: "Test evidence for immutable quorum policy",
+      });
+      await cmd("vote", { prop_id: p.id, approve: true });
+      assert.equal(
+        (
+          await db.query<{ status: string }>(
+            "select status from custom_props where id=$1",
+            [p.id],
+          )
+        ).rows[0].status,
+        "proposed",
+      );
+      await as(b);
+      await cmd("vote", { prop_id: p.id, approve: true });
+      await cmd("settle", { prop_id: p.id });
+      await as(a);
+      const oneSided = await create();
+      await cmd("lock", { prop_id: oneSided.id });
+      await cmd("await", { prop_id: oneSided.id });
+      await cmd("propose", {
+        prop_id: oneSided.id,
+        side: "yes",
+        evidence: "Synthetic single-sided pool result",
+      });
+      await cmd("vote", { prop_id: oneSided.id, approve: true });
+      await assert.rejects(
+        cmd("settle", { prop_id: oneSided.id }),
+        /Both sides/,
+      );
+      await cmd("void", {
+        prop_id: oneSided.id,
+        reason: "Only one side participated",
+      });
     },
   );
   await db.close();
